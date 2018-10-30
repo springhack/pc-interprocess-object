@@ -7,6 +7,8 @@
         '-fno-rtti',
       ],
       'sources': [
+        'include/xpcpp/sync/sync_mutex.cpp',
+        'include/xpcpp/sync/sync_util.cpp',
         'src/md5.cpp',
         'src/main.cc'
       ],

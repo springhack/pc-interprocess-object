@@ -35,6 +35,7 @@
 # include <windows.h>
 #else // ifdef _WIN32
 # define INVALID_HANDLE_VALUE -1
+#define xp_sync() { ::sync(); }
 #endif // ifdef _WIN32
 
 namespace mio {
@@ -372,7 +373,7 @@ private:
      */
     template<access_mode A = AccessMode,
             typename = typename std::enable_if<A == access_mode::write>::type>
-    void conditional_sync() { ::sync(); }
+    void conditional_sync() { xp_sync(); }
     template<access_mode A = AccessMode>
     typename std::enable_if<A == access_mode::read, void>::type conditional_sync() {}
 };

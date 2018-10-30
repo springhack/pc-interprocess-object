@@ -25,6 +25,7 @@
 #include "mio/page.hpp"
 #include "mio/detail/string_util.hpp"
 
+#include <cstdio>
 #include <algorithm>
 
 #ifndef _WIN32
@@ -82,7 +83,7 @@ file_handle_type open_file(const String& path,
             FILE_SHARE_READ | FILE_SHARE_WRITE,
             0,
             OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
+            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
             0);
 #else // POSIX
     const auto handle = ::open(c_str(path),
