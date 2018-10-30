@@ -33,9 +33,10 @@
 #  define WIN32_LEAN_AND_MEAN
 # endif // WIN32_LEAN_AND_MEAN
 # include <windows.h>
+# define xp_sync()
 #else // ifdef _WIN32
 # define INVALID_HANDLE_VALUE -1
-#define xp_sync() { ::sync(); }
+# define xp_sync() { ::sync(); }
 #endif // ifdef _WIN32
 
 namespace mio {
