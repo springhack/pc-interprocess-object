@@ -17,7 +17,7 @@ void none_free_callback(char* data, void* hint) {
   (void)hint;
 }
 
-NAN_METHOD(Alloc) {
+NAN_METHOD(AllocHeap) {
   std::string path(*(Nan::Utf8String(info[0])));
   size_t size = info[1]->Uint32Value();
   allocate_file(path, size);
@@ -38,11 +38,19 @@ NAN_METHOD(Alloc) {
   info.GetReturnValue().Set(ret);
 }
 
-NAN_METHOD(Free) {
+NAN_METHOD(FreeHeap) {
   std::string hash(*(Nan::Utf8String(info[0])));
   rw_mmap* mmap = memMap[hash];
   mmap->unmap();
   delete mmap;
+}
+
+NAN_METHOD(FromOffset) {
+  v8::Local<v8::Object> buffer = info[0]->ToObject();
+  size_t offset = info[1]->Uint32Value();
+  size_t length = info[2]->Uint32Value();
+  v8::Local<v8::Object> ret = Nan::NewBuffer(node::Buffer::Data(buffer) + offset, length, none_free_callback, nullptr).ToLocalChecked();
+  info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(Lock) {
@@ -64,13 +72,18 @@ NAN_METHOD(Unlock) {
 NAN_MODULE_INIT(Init) {
   Nan::Set(
     target,
-    Nan::New<v8::String>("alloc").ToLocalChecked(),
-    Nan::New<v8::FunctionTemplate>(Alloc)->GetFunction()
+    Nan::New<v8::String>("allocHeap").ToLocalChecked(),
+    Nan::New<v8::FunctionTemplate>(AllocHeap)->GetFunction()
   );
   Nan::Set(
     target,
-    Nan::New<v8::String>("free").ToLocalChecked(),
-    Nan::New<v8::FunctionTemplate>(Free)->GetFunction()
+    Nan::New<v8::String>("freeHeap").ToLocalChecked(),
+    Nan::New<v8::FunctionTemplate>(FreeHeap)->GetFunction()
+  );
+  Nan::Set(
+    target,
+    Nan::New<v8::String>("fromOffset").ToLocalChecked(),
+    Nan::New<v8::FunctionTemplate>(FromOffset)->GetFunction()
   );
   Nan::Set(
     target,

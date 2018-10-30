@@ -1,1 +1,7 @@
-const native = require('bindings')('interprocess-object');
+const Heap = require('./lib/heap');
+const MallocAllocator = require('./lib/malloc-allocator');
+
+module.exports = {
+  Heap,
+  MallocAllocator
+};
