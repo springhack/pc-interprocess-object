@@ -3,7 +3,7 @@
 using namespace Nan;
 using rw_mmap = mio::basic_mmap<mio::access_mode::write, char>;
 
-static std::map<std::string, CubicleSoft::Sync::Mutex *> lockMap;
+static std::map<std::string, std::uint32_t> lockMap;
 static std::map<std::string, rw_mmap *> memMap;
 
 void allocate_file(const std::string& path, const int size) {
@@ -46,11 +46,19 @@ NAN_METHOD(Free) {
 }
 
 NAN_METHOD(Lock) {
-  CubicleSoft::Sync::Mutex* mutex = new CubicleSoft::Sync::Mutex();
-  mutex->Create();
+  // std::string hash(*(Nan::Utf8String(info[0])));
+  // size_t begin = info[1]->Uint32Value();
+  // size_t end = info[2]->Uint32Value();
+  // std::string lock_hash = hash + "_" + std::to_string(begin) + "_" + std::to_string(end);
+  // CubicleSoft::Sync::Mutex* mutex = new CubicleSoft::Sync::Mutex();
+  // mutex->Lock(INFINITE);
+  // info.GetReturnValue().Set(Nan::New<v8::String>(lock_hash.c_str()).ToLocalChecked());
 }
 
 NAN_METHOD(Unlock) {
+  // std::string lock_hash(*(Nan::Utf8String(info[0])));
+  // CubicleSoft::Sync::Mutex* mutex = new CubicleSoft::Sync::Mutex();
+  // mutex->Unlock();
 }
 
 NAN_MODULE_INIT(Init) {
