@@ -1,3 +1,9 @@
+/*
+        Author: SpringHack - springhack@live.cn
+        Last modified: 2018-10-31 15:07:13
+        Filename: src/main.cc
+        Description: Created by SpringHack using vim automatically.
+ */
 #include "main.h"
 
 using namespace Nan;
@@ -28,6 +34,11 @@ void heap_free_callback(char* data, void* hint) {
   free(hint);
   rw_mmap* mmap = memMap[hash];
   if (!mmap) return;
+  if (allocatorMap[hash]) {
+    auto allocator = allocatorMap[hash];
+    allocatorMap.erase(hash);
+    delete allocator;
+  }
   memMap.erase(hash);
   mmap->unmap();
   delete mmap;
@@ -60,6 +71,11 @@ NAN_METHOD(FreeHeap) {
   rw_mmap* mmap = memMap[hash];
   if (!mmap) return;
   memMap.erase(hash);
+  if (allocatorMap[hash]) {
+    auto allocator = allocatorMap[hash];
+    allocatorMap.erase(hash);
+    delete allocator;
+  }
   mmap->unmap();
   delete mmap;
 }
@@ -77,12 +93,24 @@ NAN_METHOD(Malloc) {
   size_t size = info[1]->Uint32Value();
   dosk::allocator* allocator = allocatorMap[hash];
   auto mmap = memMap[hash];
+  auto pool = mmap->data();
   if (!allocator) {
-    allocator = new dosk::allocator(hash, mmap->data<mio::access_mode::write, char *>(), mmap->size());
+    allocator = new dosk::allocator(hash, pool, mmap->size());
     allocatorMap[hash] = allocator;
   }
   void* buffer = allocator->malloc(size);
-  v8::Local<v8::Object> ret = Nan::NewBuffer((char *)buffer, size, malloc_free_callback, allocator).ToLocalChecked();
+  v8::Local<v8::Object> ret_buffer = Nan::NewBuffer((char *)buffer, size, malloc_free_callback, allocator).ToLocalChecked();
+  v8::Local<v8::Array> ret = New<v8::Array>();
+  Nan::Set(
+    ret,
+    Nan::New<v8::Uint32>(0),
+    Nan::New<v8::Uint32>((uint32_t)((size_t)buffer - (size_t)pool))
+  );
+  Nan::Set(
+    ret,
+    Nan::New<v8::Uint32>(1),
+    ret_buffer
+  );
   info.GetReturnValue().Set(ret);
 }
 
@@ -112,6 +140,11 @@ NAN_MODULE_INIT(Init) {
     target,
     Nan::New<v8::String>("freeHeap").ToLocalChecked(),
     Nan::New<v8::FunctionTemplate>(FreeHeap)->GetFunction()
+  );
+  Nan::Set(
+    target,
+    Nan::New<v8::String>("malloc").ToLocalChecked(),
+    Nan::New<v8::FunctionTemplate>(Malloc)->GetFunction()
   );
   Nan::Set(
     target,
