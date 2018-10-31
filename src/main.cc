@@ -3,13 +3,14 @@
 using namespace Nan;
 using rw_mmap = mio::basic_mmap<mio::access_mode::write, char>;
 
-static std::map<std::string, std::uint32_t> lockMap;
+// static std::map<std::string, std::uint32_t> lockMap;
 static std::map<std::string, rw_mmap *> memMap;
+static std::map<std::string, dosk::allocator *> allocatorMap;
 
 void allocate_file(const std::string& path, const int size) {
-  std::ofstream file(path);
-  std::string s(size, '0');
-  file << s;
+  std::ofstream file(path, std::ios::binary | std::ios::out);
+  file.seekp(size - 1);
+  file.write("", 1);
 }
 
 void none_free_callback(char* data, void* hint) {
@@ -17,11 +18,27 @@ void none_free_callback(char* data, void* hint) {
   (void)hint;
 }
 
+void malloc_free_callback(char* data, void* hint) {
+  dosk::allocator* allocator = (dosk::allocator *)hint;
+  allocator->free(data);
+}
+
+void heap_free_callback(char* data, void* hint) {
+  std::string hash((char *)hint);
+  free(hint);
+  rw_mmap* mmap = memMap[hash];
+  if (!mmap) return;
+  memMap.erase(hash);
+  mmap->unmap();
+  delete mmap;
+}
+
 NAN_METHOD(AllocHeap) {
   std::string path(*(Nan::Utf8String(info[0])));
   size_t size = info[1]->Uint32Value();
   allocate_file(path, size);
-  std::string hash = md5(path);
+  auto hash = md5(path);
+  auto hint = strdup(hash.c_str());
   rw_mmap* mmap = new rw_mmap(path);
   memMap[hash] = mmap;
   v8::Local<v8::Array> ret = New<v8::Array>();
@@ -33,7 +50,7 @@ NAN_METHOD(AllocHeap) {
   Nan::Set(
     ret,
     Nan::New<v8::Uint32>(1),
-    Nan::NewBuffer(mmap->data<mio::access_mode::write, char *>(), size, none_free_callback, nullptr).ToLocalChecked()
+    Nan::NewBuffer(mmap->data<mio::access_mode::write, char *>(), size, heap_free_callback, hint).ToLocalChecked()
   );
   info.GetReturnValue().Set(ret);
 }
@@ -41,6 +58,8 @@ NAN_METHOD(AllocHeap) {
 NAN_METHOD(FreeHeap) {
   std::string hash(*(Nan::Utf8String(info[0])));
   rw_mmap* mmap = memMap[hash];
+  if (!mmap) return;
+  memMap.erase(hash);
   mmap->unmap();
   delete mmap;
 }
@@ -50,6 +69,20 @@ NAN_METHOD(FromOffset) {
   size_t offset = info[1]->Uint32Value();
   size_t length = info[2]->Uint32Value();
   v8::Local<v8::Object> ret = Nan::NewBuffer(node::Buffer::Data(buffer) + offset, length, none_free_callback, nullptr).ToLocalChecked();
+  info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(Malloc) {
+  std::string hash(*(Nan::Utf8String(info[0])));
+  size_t size = info[1]->Uint32Value();
+  dosk::allocator* allocator = allocatorMap[hash];
+  auto mmap = memMap[hash];
+  if (!allocator) {
+    allocator = new dosk::allocator(hash, mmap->data<mio::access_mode::write, char *>(), mmap->size());
+    allocatorMap[hash] = allocator;
+  }
+  void* buffer = allocator->malloc(size);
+  v8::Local<v8::Object> ret = Nan::NewBuffer((char *)buffer, size, malloc_free_callback, allocator).ToLocalChecked();
   info.GetReturnValue().Set(ret);
 }
 

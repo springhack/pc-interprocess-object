@@ -9,3 +9,4 @@
 #include <mio/mmap.hpp>
 
 #include "md5.h"
+#include "allocator.h"
